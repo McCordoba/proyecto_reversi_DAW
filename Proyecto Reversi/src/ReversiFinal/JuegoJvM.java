@@ -1,0 +1,253 @@
+package ReversiFinal;
+
+import java.util.ArrayList;
+import java.util.Random;
+import java.util.Scanner;
+
+// MAQUINA JUGADOR
+public class JuegoJvM {
+    private char[][] tablero;
+    private char jugadorActivo;
+
+    public JuegoJvM() {
+        tablero = new char[8][8];
+        inciciarTablero();
+        jugadorActivo = 'O';
+    }
+
+    public void inciciarTablero() {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                tablero[i][j] = '-';
+            }
+        }
+
+        tablero[3][3] = 'O';
+        tablero[4][4] = 'O';
+        tablero[3][4] = 'X';
+        tablero[4][3] = 'X';
+    }
+
+    public void crearTablero() {
+        System.out.println("  1 2 3 4 5 6 7 8"); // Imprime los números de columna
+
+        for (int i = 0; i < 8; i++) {
+            System.out.print((i + 1) + " "); // Imprime el número de fila
+
+            for (int j = 0; j < 8; j++) {
+                if (tablero[i][j] == 'X') {
+                    System.out.print("\u25CF "); // Ficha redonda blanca
+                } else if (tablero[i][j] == 'O') {
+                    System.out.print("\u25CB "); // Ficha redonda negra
+                } else {
+                    System.out.print(tablero[i][j] + " "); // Imprime el contenido de cada celda del tablero
+                }
+            }
+
+            System.out.println(); // Imprime una nueva línea después de cada fila
+        }
+    }
+
+    public void juego() {
+        Scanner scanner = new Scanner(System.in);
+
+        while (true) {
+            if (noQuedanMovimientosPosibles()) {
+                System.out.println("No quedan movimientos posibles. El juego ha terminado.");
+                System.out.println("Puntos Jugador 1 (X): " + calcularPuntuacion('X'));
+                System.out.println("Puntos Jugador 2 (O): " + calcularPuntuacion('O'));
+                determinarGanador(); // Llamar al método para determinar el ganador
+                break; // Salir del bucle while y terminar el juego
+            }
+
+            if (jugadorActivo == 'O') {
+                System.out.println("Jugador 1: " + jugadorActivo);
+                System.out.print("Introduce la fila: ");
+                int fila = obtenerEntrada(scanner, 1, 8) - 1;
+                System.out.print("Introduce la columna: ");
+                int columna = obtenerEntrada(scanner, 1, 8) - 1;
+
+                if (movimientoValido(fila, columna, jugadorActivo)) {
+                    tablero[fila][columna] = jugadorActivo;
+                    voltearFichas(fila, columna);
+                    jugadorActivo = cambiarJugador();
+                } else {
+                    System.out.println("Movimiento no válido. Vuelve a intentarlo.");
+                    continue; // Saltar a la siguiente iteración del bucle
+                }
+            } else {
+                System.out.println("Jugador 2: " + jugadorActivo);
+
+                // Obtener el ArrayList con el movimiento aleatorio
+                ArrayList<Integer> movimiento = obtenerMovimientosPosibles();
+
+                if (!movimiento.isEmpty()) {
+                    int fila = movimiento.get(0);
+                    int columna = movimiento.get(1);
+
+                    tablero[fila][columna] = jugadorActivo;
+
+                    voltearFichas(fila, columna);
+
+                    jugadorActivo = cambiarJugador();
+                } else {
+                    System.out.println("Movimiento no válido. Se pasa el turno al siguiente jugador.");
+                    jugadorActivo = cambiarJugador();
+                    continue; // Saltar a la siguiente iteración del bucle
+                }
+            }
+            crearTablero();
+        }
+        scanner.close();
+    }
+
+    public int obtenerEntrada(Scanner scanner, int min, int max) {
+        while (true) {
+            try {
+                String entrada = scanner.nextLine();
+                int valor = Integer.parseInt(entrada);
+                if (valor >= min && valor <= max) {
+                    return valor;
+                } else {
+                    System.out.println("El número debe estar entre " + min + " y " + max + ". Inténtalo de nuevo.");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Entrada inválida. Debes ingresar un número. Inténtalo de nuevo.");
+            }
+        }
+    }
+
+    public boolean movimientoValido(int fila, int columna, char jugadorActivo) {
+        if (fila < 0 || fila > 7 || columna < 0 || columna > 7 || tablero[fila][columna] != '-') {
+            return false;
+        }
+
+        char jugadorOponente = (jugadorActivo == 'X') ? 'O' : 'X';
+
+        for (int xDir = -1; xDir <= 1; xDir++) {
+            for (int yDir = -1; yDir <= 1; yDir++) {
+                // No podemos capturar en la misma dirección que el movimiento
+                if (xDir == 0 && yDir == 0) {
+                    continue;
+                }
+
+                int x = fila + xDir;
+                int y = columna + yDir;
+                boolean encontradoOponente = false;
+
+                while (x >= 0 && x < 8 && y >= 0 && y < 8) {
+                    if (tablero[x][y] == '-') {
+                        break;
+                    } else if (tablero[x][y] == jugadorOponente) {
+                        encontradoOponente = true;
+                        x += xDir;
+                        y += yDir;
+                    } else if (tablero[x][y] == jugadorActivo && encontradoOponente) {
+                        return true;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public void voltearFichas(int fila, int columna) {
+        int[] xDirecciones = {-1, -1, 0, 1, 1, 1, 0, -1};
+        int[] yDirecciones = {0, 1, 1, 1, 0, -1, -1, -1};
+
+        for (int i = 0; i < 8; i++) {
+            int f = fila + xDirecciones[i];
+            int c = columna + yDirecciones[i];
+            boolean sePuedeVoltear = false;
+
+            while (f >= 0 && f < 8 && c >= 0 && c < 8 && tablero[f][c] == cambiarJugador()) {
+                f += xDirecciones[i];
+                c += yDirecciones[i];
+                sePuedeVoltear = true;
+            }
+
+            if (sePuedeVoltear && f >= 0 && f < 8 && c >= 0 && c < 8 && tablero[f][c] == jugadorActivo) {
+                f = fila + xDirecciones[i];
+                c = columna + yDirecciones[i];
+
+                while (tablero[f][c] == cambiarJugador()) {
+                    tablero[f][c] = jugadorActivo;
+                    f += xDirecciones[i];
+                    c += yDirecciones[i];
+                }
+            }
+        }
+    }
+
+    public ArrayList<Integer> obtenerMovimientosPosibles() {
+        ArrayList<Integer> filas = new ArrayList<>();
+        ArrayList<Integer> columnas = new ArrayList<>();
+        ArrayList<Integer> movimiento = new ArrayList<>();
+
+        for (int fila = 0; fila < 8; fila++) {
+            for (int columna = 0; columna < 8; columna++) {
+                if (movimientoValido(fila, columna, jugadorActivo)) {
+                    filas.add(fila);
+                    columnas.add(columna);
+                }
+            }
+        }
+
+        if (!filas.isEmpty() && !columnas.isEmpty()) {
+            Random random = new Random();
+            int indice = random.nextInt(filas.size());
+            movimiento.add(filas.get(indice));
+            movimiento.add(columnas.get(indice));
+        } else {
+            movimiento.add(-1); // Valor de fila inválido
+            movimiento.add(-1); // Valor de columna inválido
+        }
+        return movimiento;
+    }
+
+    public int calcularPuntuacion(char jugador) {
+        int puntuacion = 0;
+        for (int fila = 0; fila < 8; fila++) {
+            for (int columna = 0; columna < 8; columna++) {
+                if (tablero[fila][columna] == jugador) {
+                    puntuacion++;
+                }
+            }
+        }
+        return puntuacion;
+    }
+
+    public void determinarGanador() {
+        int puntuacionJugador1 = calcularPuntuacion('X');
+        int puntuacionJugador2 = calcularPuntuacion('O');
+
+        if (puntuacionJugador1 > puntuacionJugador2) {
+            System.out.println("¡El Jugador 1 (X) es el ganador!");
+        } else if (puntuacionJugador1 < puntuacionJugador2) {
+            System.out.println("¡El Jugador 2 (O) es el ganador!");
+        } else {
+            System.out.println("¡Empate! No hay ganador.");
+        }
+    }
+
+    public boolean noQuedanMovimientosPosibles() {
+        for (int fila = 0; fila < 8; fila++) {
+            for (int columna = 0; columna < 8; columna++) {
+                if (movimientoValido(fila, columna, jugadorActivo)) {
+                    return false; // Se encontró un movimiento válido, el juego aún no ha terminado
+                }
+            }
+        }
+        return true; // No se encontraron movimientos válidos, el juego ha terminado
+    }
+
+    public char cambiarJugador() {
+        if (jugadorActivo == 'X') {
+            return 'O';
+        } else {
+            return 'X';
+        }
+    }
+}
